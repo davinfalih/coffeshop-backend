@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(BUYER)
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  carts        CartItem[]
+  orders       Order[]
+  payments     Payment[]
+  ratings      Rating[]
+}
+
+enum Role {
+  ADMIN
+  BUYER
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id             Int       @id @default(autoincrement())
+  name           String
+  description    String?
+  price          Float
+  stock          Int       @default(0)
+  imageUrl       String?
+  categoryId     Int
+  category       Category  @relation(fields: [categoryId], references: [id])
+  size           CoffeeSize @default(REGULAR)
+  roastLevel     RoastLevel @default(MEDIUM)
+  isAvailable    Boolean   @default(true)
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+  ratings        Rating[]
+  averageRating  Float     @default(0)
+  totalReviews   Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+enum CoffeeSize {
+  SMALL
+  REGULAR
+  LARGE
+}
+
+enum RoastLevel {
+  LIGHT
+  MEDIUM
+  DARK
+}
+
+model Rating {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@index([userId])
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  userId         Int
+  user           User        @relation(fields: [userId], references: [id])
+  totalAmount    Float
+  discountAmount Float       @default(0)
+  promoId        Int?
+  promo          Promo?      @relation(fields: [promoId], references: [id])
+  status         OrderStatus @default(PENDING)
+  orderItems     OrderItem[]
+  payment        Payment?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Payment {
+  id                  Int           @id @default(autoincrement())
+  orderId             Int           @unique
+  order               Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId              Int
+  user                User          @relation(fields: [userId], references: [id])
+  amount              Float
+  paymentMethod       PaymentMethod @default(MIDTRANS)
+  paymentStatus       PaymentStatus @default(PENDING)
+  transactionId       String?       @unique
+  midtransToken       String?
+  midtransRedirectUrl String?
+  paymentProof        String?
+  failureReason       String?
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([orderId])
+}
+
+enum PaymentMethod {
+  MIDTRANS
+  BANK_TRANSFER
+  E_WALLET
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Contact {
+  id        Int           @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  status    ContactStatus @default(UNREAD)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+enum ContactStatus {
+  UNREAD
+  READ
+  REPLIED
+}
+
+enum PromoType {
+  PERCENTAGE
+  FIXED
+}
+
+model Promo {
+  id             Int      @id @default(autoincrement())
+  code           String   @unique
+  description    String?
+  type           PromoType
+  value          Float
+  maxDiscount    Float?
+  minOrderAmount Float    @default(0)
+  startDate      DateTime
+  endDate        DateTime
+  usageLimit     Int?
+  usedCount      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  orders         Order[]
+}
